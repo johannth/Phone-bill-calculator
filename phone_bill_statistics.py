@@ -3,10 +3,47 @@ import os.path
 from optparse import OptionParser
 from datetime import datetime
 
-CALL_FAST_RATE = 5.5
-CALL_MINUTE_RATE = 12.5
-SMS_PRICE = 10
-MMS_PRICE = 15
+NAME = -1
+CALL_FAST_RATE = 0 
+CALL_MINUTE_RATE = 1
+SMS_PRICE = 2
+MMS_PRICE = 3
+COMPANY_NAME = 4
+
+PHONE_COMPANIES = [
+            { 
+                COMPANY_NAME: 'Tal',
+                NAME: 'Frelsi',
+                CALL_FAST_RATE: 5.5,
+                CALL_MINUTE_RATE: 12.5,
+                SMS_PRICE: 10,
+                MMS_PRICE: 15,
+            },
+            { 
+                NAME: 'Vinakerfi',
+                CALL_FAST_RATE: 5.5,
+                CALL_MINUTE_RATE: 15.5,
+                SMS_PRICE: 11,
+                MMS_PRICE: 15,
+            },
+            {
+                COMPANY_NAME: 'Nova',
+                NAME: '0 kr. Nova i Nova',
+                CALL_FAST_RATE: 5.9,
+                CALL_MINUTE_RATE: 18.9,
+                SMS_PRICE: 9.9,
+                MMS_PRICE: 9.9
+            },
+            {
+                COMPANY_NAME: 'Nova',
+                NAME: 'Eitt verð i alla',
+                CALL_FAST_RATE: 5.9,
+                CALL_MINUTE_RATE: 9.9,
+                SMS_PRICE: 9.9,
+                MMS_PRICE: 9.9
+            }]
+
+
 
 def generate_statistics(datafile_path):
     path, filename = os.path.split(datafile_path)
@@ -58,22 +95,34 @@ def generate_statistics(datafile_path):
         phonenumber_stats["cost"] += price
         
         phonenumbers[phonenumber] = phonenumber_stats
-        
-   
-        
+         
+    column_names = ['"Símanúmer"','"Nafn"','"Er heimasími"','"Fjöldi MMS-a"','"Fjöldi SMS-a"','"Fjöldi símtala"','"Sekúndur"','"Kostnaður (ISK)"']
+    column_names.extend(['"%s - %s"' % (x[COMPANY_NAME], x[NAME]) for x in PHONE_COMPANIES])
     output_file = open(filename, "w")
-    output_file.write('"Símanúmer","Nafn","Er heimasími","Fjöldi MMS-a","Fjöldi SMS-a","Fjöldi símtala","Sekúndur","Kostnaður (ISK)", "Kostnaður ef þú ferð í Tal"\n')
+    output_file.write(",".join(column_names))
+    output_file.write("\n") 
     for phonenumber, phonenumber_stats in phonenumbers.iteritems():
         mms_count = phonenumber_stats["mms_count"]
         sms_count = phonenumber_stats["sms_count"]
         call_count = phonenumber_stats["call_count"]
         cost = phonenumber_stats["cost"]
         seconds = phonenumber_stats["seconds"]
-        new_cost = sms_count * SMS_PRICE + mms_count * MMS_PRICE + seconds / 60.0 * CALL_MINUTE_RATE + call_count * CALL_FAST_RATE
         is_landline = str(phonenumber).startswith("4") or str(phonenumber).startswith("5")
         
-        output_file.write(",".join(str(x) for x in [phonenumber, "", int(is_landline), mms_count, sms_count, call_count, seconds, cost, new_cost]))
+        new_costs = []
+        for company_rate in PHONE_COMPANIES:
+            new_cost = calculate_cost_for_company(company_rate, sms_count, mms_count, seconds, call_count)
+            new_costs.append(new_cost)
+            
+
+        columns = [phonenumber, "", int(is_landline), mms_count, sms_count, call_count, seconds, cost]
+        columns.extend(new_costs)
+        output_file.write(",".join(str(x) for x in columns))
         output_file.write("\n")   
+        
+def calculate_cost_for_company(company_rate, sms_count, mms_count, seconds, call_count):
+    return sms_count * company_rate[SMS_PRICE] + mms_count * company_rate[MMS_PRICE] + seconds / 60.0 * company_rate[CALL_MINUTE_RATE] + call_count * company_rate[CALL_FAST_RATE]
+
 
 if __name__ == "__main__":
     parser = OptionParser()
